@@ -1,0 +1,5 @@
+- 0.jpg - True/False
+- 1.jpg - True
+- 2.jpg - True/False
+- 3.jpg - True
+- 4.jpg - False
