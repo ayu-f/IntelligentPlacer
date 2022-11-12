@@ -1,13 +1,11 @@
-import abc
-from typing import Tuple, Optional
+
 from os import listdir, path
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.ndimage import binary_fill_holes
-from skimage.color import rgb2gray, rgba2rgb
+from skimage.color import rgb2gray
 from skimage.feature import canny
-from skimage.filters import gaussian, threshold_otsu, threshold_minimum, try_all_threshold
+from skimage.filters import gaussian, threshold_otsu
 from skimage.morphology import binary_closing, binary_opening
 from skimage.measure import regionprops, label
 
@@ -127,7 +125,7 @@ def get_mask_from_contour(contours) -> []:
     return masks
 
 # temporary
-def create_mask_from_contours(img, contours) -> []:
+def get_full_mask_from_contours(img, contours) -> []:
     width1, height1 = img.shape[0], img.shape[1]
     masks = []
 
