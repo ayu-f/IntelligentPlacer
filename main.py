@@ -3,11 +3,11 @@ from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import cv2
-from intellegent_placer_lib.image_processing import ObjectBase, compress_image, read_images
-from intellegent_placer_lib.image_processing import find_polygon_and_objects
+from intelligent_placer_lib.image_processing import ObjectBase, compress_image, read_images
+from intelligent_placer_lib.image_processing import find_polygon_and_objects
 from os import listdir, path
-from intellegent_placer_lib.intellegent_placer import fit_in_polygon
-from intellegent_placer_lib import intellegent_placer
+from intelligent_placer_lib.intelligent_placer import fit_in_polygon
+from intelligent_placer_lib import intelligent_placer
 
 def read_data():
     print(intellegent_placer.check_image("images/dataset/0.jpg"))

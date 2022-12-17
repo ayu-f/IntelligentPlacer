@@ -7,7 +7,7 @@ import cv2
 from scipy.ndimage import rotate
 
 # After the object is rotated, noises appear - let's make up for them with a small error
-from intellegent_placer_lib.image_processing import compress_image, find_polygon_and_objects
+from intelligent_placer_lib.image_processing import compress_image, find_polygon_and_objects
 
 ERR = 30
 
