@@ -119,11 +119,7 @@ def get_mask_from_contour(contours, fill=False, err=0) -> []:
 
 """ Get polygon and objects in img"""
 def find_polygon_and_objects(img):
-
-    """ VERNUT """
-    #read_images("images/objects")
-
-    """ """
+    read_images("images/objects")
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # process image for finding contours
     img_gauss = cv2.GaussianBlur(img_gray, (3,3), 0)

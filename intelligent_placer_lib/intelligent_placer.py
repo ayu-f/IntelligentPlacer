@@ -41,23 +41,10 @@ def fit_in_polygon(polygon, objects: list):
     # try to fit
     for i, obj in enumerate(objects):
         y, x = obj.mask.shape
-        #plt.imshow(ex_polygon_mask)
-        #plt.show()
-        #plt.imshow(obj.mask)
-        #plt.show()
         if not try_to_fit_one_object(ex_polygon_mask, obj.mask, pos_y - y, pos_x - x):
-            #if i == 0: # cannot fit first object => false
             return False, None
         elif len(objects) <= 1:
             return True, ex_polygon_mask
-        #else:
-        #    objects.pop(i)
-    """else:
-        print("recursive")
-        new_order_list = copy(objects)
-        new_order_list.pop(i)
-        new_order_list.append(obj)
-        fit_in_polygon(polygon, new_order_list)"""
 
     return True, ex_polygon_mask
 
