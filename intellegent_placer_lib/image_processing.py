@@ -11,9 +11,8 @@ from skimage.measure import regionprops, label
 
 
 RATIO = 0.7
-obj_list = []
 
-
+""" Class for primitives and polygon"""
 class ObjectBase:
     def __init__(self, obj_image: np.ndarray, obj_name: str, mask=None, global_mask=None):
         self.name = obj_name
@@ -22,6 +21,7 @@ class ObjectBase:
         self.contour_image = None
         self.points, self.desc = None, None
         self.mask = mask
+        self.area = None
         self.global_mask = global_mask
         if mask is None:
             self.set_chars()
@@ -31,6 +31,10 @@ class ObjectBase:
         self.process_image, self.contour_image, self.properties = get_object_from_img(self.orig_image)
         self.mask = cv2.normalize(np.array(self.properties.image, dtype=np.int32), None, 0, 255, cv2.NORM_MINMAX).astype('uint8')
 
+    def setArea(self, mask_area):
+        self.area = mask_area
+
+    """ Match object"""
     def match(self, target) -> float:
         if len(self.points) < len(target.points):
             return target.match(self)
@@ -43,7 +47,7 @@ class ObjectBase:
                 choose += 1
         return choose / len(target.points)
 
-
+""" Get mask by image of primitives in paper"""
 def get_object_mask(img: np.ndarray):
     labels = label(img)
     properties = regionprops(labels)
@@ -54,12 +58,12 @@ def get_object_mask(img: np.ndarray):
     mask = (labels == (item + 1))
     return mask, properties[item]
 
-
+""" Find features """
 def find_points(img: np.ndarray):
     sift = cv2.SIFT_create()
     return sift.detectAndCompute(img, None)
 
-
+""" Compress image for more fast work"""
 def compress_image(src: np.ndarray, scale_percent: int):
     new_size = (int(src.shape[1] * scale_percent / 100), int(src.shape[0] * scale_percent / 100))
     return cv2.resize(src, new_size)
@@ -70,7 +74,7 @@ def draw_contours_mask(mask, image):
     cv2.drawContours(image, [contours[0]], 0, (255, 0, 0), 2)
     return image
 
-
+""" Read images and create ObjectBase's"""
 def read_images(path_to_folder):
     for image_path in listdir(path_to_folder):
         image_full_path = path.join(path_to_folder, image_path)
@@ -78,16 +82,6 @@ def read_images(path_to_folder):
             img = cv2.imread(image_full_path)
             img = compress_image(img, 60)
             result = ObjectBase(img, image_full_path)
-            obj_list.append(result)
-
-
-def find_object(mask) -> ObjectBase:
-    item = ObjectBase(mask, "", mask)
-    proportions = np.array([element.match(item) for element in obj_list])
-    original_object = proportions.argmax()
-    print(f"{obj_list[original_object].name} value {np.max(proportions)}")
-
-    return obj_list[original_object]
 
 """ Get object and properties """
 def get_object_from_img(img: np.ndarray):
@@ -104,60 +98,53 @@ def get_object_from_img(img: np.ndarray):
 
     cmask = (mask * 255).astype("uint8")
     res_image = cv2.bitwise_and(origin_image, origin_image, mask=cmask)
-    #plt.imshow(res_image)
-    #plt.show()
     return res_image, draw_contours_mask(cmask, origin_image), properties
 
 """ Create mask from contour"""
-def get_mask_from_contour(contours) -> []:
+def get_mask_from_contour(contours, fill=False, err=0) -> []:
     masks = []
     for cnt in contours:
         bbox = cv2.boundingRect(cnt)
-
         x_most_left, width, y_most_bottom, height = bbox[1], bbox[3], bbox[0], bbox[2]
-        mask = np.full((width, height), False, dtype=bool)
+        x, y, w, h = cv2.boundingRect(cnt)
+
+        mask = np.full((width, height), fill, dtype=bool)
         for y in range(y_most_bottom, y_most_bottom + height):
             for x in range(x_most_left, x_most_left + width):
-                if cv2.pointPolygonTest(cnt, (y, x), False) >= 0:
-                    mask[x - x_most_left][y - y_most_bottom] = True
-        masks.append((mask * 255).astype("uint8"))
+                if cv2.pointPolygonTest(cnt, (y, x), True) >= err:
+                    mask[x - x_most_left][y - y_most_bottom] = not fill
+        masks.append(mask)
 
     return masks
 
-# temporary
-def get_full_mask_from_contours(img, contours) -> []:
-    width1, height1 = img.shape[0], img.shape[1]
-    masks = []
-
-    for cnt in contours:
-        mask = np.full((width1, height1), False, dtype=bool)
-        for y in range(0, height1):
-            for x in range(0, width1):
-                if cv2.pointPolygonTest(cnt, (y, x), False) >= 0:
-                    mask[x][y] = True
-        masks.append((mask * 255).astype("uint8"))
-
-    return masks
-
-
+""" Get polygon and objects in img"""
 def find_polygon_and_objects(img):
-    read_images("test/img")
+
+    """ VERNUT """
+    #read_images("images/objects")
+
+    """ """
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_gauss = cv2.GaussianBlur(img_gray, (3, 3), 0)
-    img_canny = cv2.Canny(img_gauss, 70, 250)
-    plt.imshow(img_canny)
-    plt.show()
+    # process image for finding contours
+    img_gauss = cv2.GaussianBlur(img_gray, (3,3), 0)
+    img_canny = cv2.Canny(img_gauss, 80, 250)
+
+    se = np.ones((5, 5), dtype='uint8')
+    image_close = cv2.morphologyEx(img_canny, cv2.MORPH_CLOSE, se)
+    img_canny = image_close
     contours, hierarchy = cv2.findContours(image=img_canny, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
 
     good_contours = []
     cx = []
     cy = []
     area_contours = []
-    min_contour_area = 200
+    min_contour_area = 80
 
     # delete noise contours
     for i, cnt in enumerate(contours):
         contour_area = cv2.contourArea(cnt)
+        img_copy = img.copy()
+        cv2.drawContours(img_copy, [cnt], 0, (255, 0, 0), 8)
         if contour_area > min_contour_area and hierarchy[0][i][3] == -1:
             area_contours.append(contour_area)
             good_contours.append(cnt)
@@ -168,10 +155,10 @@ def find_polygon_and_objects(img):
     x_max = 0
     idx = 0
 
-    # delete contours with almost equal area
+    # filter contours
     for i, cnt in enumerate(area_contours):
         for j, cnt in enumerate(area_contours):
-            if i != j and abs(area_contours[i] - area_contours[j]) <= 70:
+            if i != j and abs(area_contours[i] - area_contours[j]) <= 50 and abs(cx[i] - cx[j]) < 10 and abs(cy[i] - cy[j]):
                 area_contours.pop(j)
                 good_contours.pop(j)
 
@@ -186,13 +173,17 @@ def find_polygon_and_objects(img):
             idx = i
 
     good_contours.pop(idx)
-    area_contours.pop(idx)
     img_copy = img.copy()
+    # detect objects
     cv2.drawContours(img_copy, good_contours, -1, (255, 0, 0), 8)
-    polygon = ObjectBase(img, "polygon", get_mask_from_contour([selected_contour])[0])
-
+    polygon = ObjectBase(img, "polygon", ~get_mask_from_contour([selected_contour], err=-1)[0])
+    polygon.setArea(area_contours[idx])
+    area_contours.pop(idx)
+    labels = label(polygon.mask)
+    properties = regionprops(labels)
     objects_set = []
     for i, mask in enumerate(get_mask_from_contour(good_contours)):
-        objects_set.append(ObjectBase(img, f"{i}", mask))
+        objects_set.append(ObjectBase(img, f"{i}", (mask * 255).astype(int)))
+        objects_set[i].setArea(area_contours[i])
 
     return polygon, objects_set
